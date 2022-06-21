@@ -9,51 +9,150 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ==" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js" integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ==" crossorigin=""></script>
 
+    <!-- Leaflet Marker Cluster -->
     <link rel="stylesheet" href="assets/MarkerCluster.css" />
     <link rel="stylesheet" href="assets/MarkerCluster.Default.css" />
     <script src="assets/leaflet.markercluster.js"></script>
 
+    <!-- Leaflet contextmenu (clique droit) -->
+    <link rel="stylesheet" href="assets/leaflet.contextmenu.css" />
+    <script src="assets/leaflet.contextmenu.js"></script>
 
     <link rel="stylesheet" href="assets/custom.css" />
+
+    <!-- Import bootstrap 3 with CDN -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
 </head>
 <body>
 
 <div id="leafletMap" style="width: 100%; height: 600px;"></div>
-<script>
 
-    const londonLatLng = [51.5, -0.09];
-    const markers = [{
-        lat: 46.2046,
-        lng: 6.1965,
-        title: 'Marker 1',
-        description: 'This is the first marker',
-    }, {
-        lat: 46.2044,
-        lng: 6.1445,
-        title: 'Marker 2',
-        description: 'This is the second marker',
-    }, {
-        lat: londonLatLng[0],
-        lng: londonLatLng[1],
-        title: 'Marker 2',
-        description: 'This is the second marker',
-    }];
 
-    const map = initLeafletMap();
-    displayMarkerCluster(map, markers);
+<!-- Modal Bootstrap 3 - Add Marker -->
+<div class="modal fade" id="modalAddMarker" tabindex="-1" role="dialog" aria-labelledby="modalBootstrap3" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title" id="modalBootstrap3Label">Add Marker</h4>
+            </div>
+            <div class="modal-body">
+                <!-- Form (type: OxBase or Sensor, name, description, mac addr, address, city, postal code, country) -->
+                    <div class="form-group">
+                        <label for="type">Type</label>
+                        <select class="form-control" id="type">
+                            <option value="OxBase">OxBase</option>
+                            <option value="Sensor">Sensor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" class="form-control" id="name" placeholder="Name">
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <input type="text" class="form-control" id="description" placeholder="Description">
+                    </div>
+                    <div class="form-group">
+                        <label for="macAddr">MAC Addr</label>
+                        <input type="text" class="form-control" id="macAddr" placeholder="MAC Addr">
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <input type="text" class="form-control" id="address" placeholder="Address">
+                    </div>
+                    <div class="form-group">
+                        <label for="city">City</label>
+                        <input type="text" class="form-control" id="city" placeholder="City">
+                    </div>
+                    <div class="form-group">
+                        <label for="postalCode">Postal Code</label>
+                        <input type="text" class="form-control" id="postalCode" placeholder="Postal Code">
+                    </div>
+                    <div class="form-group">
+                        <label for="country">Country</label>
+                        <input type="text" class="form-control" id="country" placeholder="Country">
+                    </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    /*
+        * Leaflet : https://leafletjs.com/
+        * MarkerCluster : https://github.com/Leaflet/Leaflet.markercluster/tree/master
+        * Context menu : https://github.com/aratcliffe/Leaflet.contextmenu`
+        * Récpérer adresse depuis des coordonnées : https://nominatim.org/
+     */
+    import Markers from './Markers.js';
+
+    init();
+    function init() {
+        const map = initLeafletMap();
+        //createListener(map);
+        displayMarkerCluster(map, Markers);
+    }
 
     function initLeafletMap() {
         const geneveLatLng = new L.LatLng(46.2044, 6.1445);
-        const map = L.map('leafletMap').setView(geneveLatLng, 13);
 
+        const mapOptions = {
+            contextmenu: true,
+            contextmenuWidth: 150,
+            contextmenuItems: [{
+                text: 'Add marker with modal',
+                callback: function (e) {
+                    displayAndPopulateModal(e.latlng.lat, e.latlng.lng);
+                }
+            },{
+                text: 'Add marker',
+                callback: function (e) {
+                    const marker = L.marker(e.latlng, {
+                        title: 'New marker',
+                        description: 'This is a new marker',
+                    });
+                    marker.addTo(map);
+                }
+            }, {
+                text: 'Center map here',
+                callback: function (e) {
+                    map.panTo(e.latlng);
+                }
+            },{
+                text: 'Zoom in',
+                callback: function (e) {
+                    map.zoomIn();
+                }
+            },{
+                text: 'Zoom out',
+                callback: function (e) {
+                    map.zoomOut();
+                }
+            },{
+                text: 'Show coordinates',
+                callback: function (e) {
+                    alert(e.latlng.toString());
+                }
+            }]
+        };
+        const map = L.map('leafletMap', mapOptions).setView(geneveLatLng, 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
-
         return map;
     }
 
-    function displayMarkerCluster(map, markers) {
+    function displayMarkerCluster(map, Markers) {
+        const markers = getMarkers();
         const markerCluster = L.markerClusterGroup();
         markers.forEach(marker => {
             const markerLatLng = new L.LatLng(marker.lat, marker.lng);
@@ -65,9 +164,40 @@
         });
     }
 
+    async function getCoordinates(address) {
+        const url = `https://nominatim.openstreetmap.org/search?q=${address}&format=json`;
+        const answer = await fetch(url);
+        if(answer.ok) {
+            const data = await answer.json();
+            return data[0];
+        }
+    }
+
+    async function getAddressFromCoordinates(lat, lng) {
+        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+        const answer = await fetch(url);
+        if(answer.ok) {
+            return await answer.json();
+        }
+    }
+
+    // TODO: A modifier pour récupérer les markers depuis la base de données
+    function getMarkers() {
+        return Markers;
+    }
+
+    async function displayAndPopulateModal(lat, lng) {
+        const modal = $('#modalAddMarker');
+        modal.modal('show');
+        const addressDatas = await getAddressFromCoordinates(lat, lng);
+        console.log(addressDatas);
+        document.querySelector('#address').value = addressDatas.address.road;
+        document.querySelector(`#city`).value = addressDatas.address.city;
+        document.querySelector(`#postalCode`).value = addressDatas.address.postcode;
+        document.querySelector(`#country`).value = addressDatas.address.country;
+    }
+
+
 </script>
-
-
-
 </body>
 </html>

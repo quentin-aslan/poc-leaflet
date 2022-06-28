@@ -25,11 +25,37 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 
+    <!-- Import zTree library -->
+    <link rel="stylesheet" href="assets/zTree/zTreeStyle.css" type="text/css">
+    <script type="text/javascript" src="assets/zTree/jquery.ztree.core.js"></script>
+
 </head>
 <body>
 
-<div id="leafletMap" style="width: 100%; height: 600px;"></div>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <h1>POC - Leaflet</h1>
+            </div>
+        </div>
+        <div class="row">
 
+            <div class="col-md-4">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Tree view</h3>
+                    </div>
+                    <div class="panel-body">
+                        <ul id="tree" class="ztree" style="width:250px; overflzow:auto"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div id="leafletMap" style="width: 100%; height: 600px;"></div>
+            </div>
+        </div>
+    </div>
 
 <!-- Modal Bootstrap 3 - Add Marker -->
 <div class="modal fade" id="modalAddMarker" tabindex="-1" role="dialog" aria-labelledby="modalBootstrap3" aria-hidden="true">
@@ -45,7 +71,7 @@
                     <div class="form-group">
                         <label for="type">Type</label>
                         <select class="form-control" id="type">
-                            <option value="OxBase">OxBase</option>
+                            <option value="OxBase" selected>OxBase</option>
                             <option value="Sensor">Sensor</option>
                         </select>
                     </div>
@@ -106,7 +132,96 @@
         * Context menu : https://github.com/aratcliffe/Leaflet.contextmenu`
         * Récpérer adresse depuis des coordonnées : https://nominatim.org/
      */
-    import Markers from './Markers.js';
+
+    class TreeView {
+
+        /**
+         * https://treejs.cn/v3/api.php
+         * @param LeafletMap
+         */
+
+        constructor(LeafletMap) {
+            this.LeafletMap = LeafletMap;
+            this.LeafletMap.TreeView = this;
+
+            this.tree = null;
+
+            this.TREE_DOM = $("#tree"); // On utilise jQuery pour récupérer le DOM de l'arbre
+
+            this.zTreeObj = null;
+
+            this.initTreeView();
+        }
+
+        onClickNode(event, treeId, treeNode) {
+            console.log(treeNode);
+
+            this.LeafletMap.centerOnMarker(treeNode);
+        }
+
+        addIcon(markers) {
+            for(let marker of markers) {
+                marker.icon = "assets/images/ox_base_lora_16x16.png"
+            }
+
+            return markers;
+        }
+
+        /**
+         * Initialisation de l'arbre
+         * @private
+         */
+        initTreeView() {
+            const setting = {
+                view: {
+                    dblClickExpand: false,
+                    showLine: true,
+                    selectedMulti: false
+                },
+                data: {
+                    simpleData: {
+                        enable: true,
+                        idKey: "id",
+                        pIdKey: "pId",
+                        rootPId: ""
+                    }
+                },
+                callback: {
+                    onClick: ((event, treeId, treeNode) => this.onClickNode(event, treeId, treeNode))
+                },
+            };
+            $.fn.zTree.init(this.TREE_DOM, setting, this.addIcon(this.LeafletMap.MARKERS)); // Initialise l'arbre avec les données
+            this.zTreeObj = $.fn.zTree.getZTreeObj("tree");
+            this.zTreeObj.selectNode(this.zTreeObj.getNodeByParam("id", 103));
+
+            setTimeout(() => {
+                this.selectNode(3);
+            }, 2000);
+        }
+
+        /**
+         * Sélectionne un node de l'arbre
+         * @param {object} node
+         * @public
+         */
+        selectNode(node) {
+            let treeObj = $.fn.zTree.getZTreeObj("tree");
+            let allNodes = treeObj.getNodes();
+            allNodes = treeObj.transformToArray(allNodes);
+
+            console.log(allNodes);
+            const nodeInstance = allNodes.find(e => parseInt(e.id) === parseInt(node.id));
+            if(nodeInstance) {
+                treeObj.selectNode(nodeInstance);
+            } else {
+                console.log('node not found');
+                return false;
+            }
+        }
+
+    }
+
+
 
     class LeafletMap {
         constructor(markers = []) {
@@ -119,7 +234,11 @@
 
             this.TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-             this.initLeafletMap();
+            this.API_URL = "http://localhost:8888/index.php";
+
+            this.TreeView = null; // Instance de la class TreeView
+
+            this.initLeafletMap();
 
             this.displayMarkerCluster();
         }
@@ -177,17 +296,42 @@
             }).addTo(this.MAP);
         }
 
-        displayMarkerCluster() {
+        async displayMarkerCluster() {
             this.MARKER_CLUSTER_GROUP.clearLayers();
-            const markers = this.getMarkers();
-            markers.forEach(marker => {
+            this.MARKERS.forEach(marker => {
                 const markerLatLng = new L.LatLng(marker.lat, marker.lng);
-                const markerMarker = L.marker(markerLatLng);
-                markerMarker.bindPopup(`<h3>${marker.title}</h3>${marker.description}`);
+                const icon = (marker.type === 'OxBase') ? 'img/oxbase.png' : 'img/sensor.png';
+
+                marker.icon = this.getOxBaseIcon();
+
+                const markerMarker = L.marker(markerLatLng, marker);
+                markerMarker.bindPopup(`
+                    <h4>${marker.name}</h4>
+
+                    <p>${marker.type}</p>
+
+                    <p>${marker.lat}</p>
+
+                    <p>${marker.lng}</p>
+                `);
+
+                markerMarker.on('click', (e) => {
+                    this.TreeView.selectNode(marker);
+                });
+
                 this.MARKER_CLUSTER_GROUP.addLayer(markerMarker);
                 this.MAP.addLayer(this.MARKER_CLUSTER_GROUP);
-                console.log(marker.title);
             });
+        }
+
+        getOxBaseIcon() {
+            // Use the Leaflet icon class to create an icon from the png file
+            return L.icon({
+                iconUrl: 'assets/images/ox_base_lora_400x400.png',
+                iconSize: [32, 37],
+                iconAnchor: [16, 37],
+                popupAnchor: [0, -37]
+            })
         }
 
         async getCoordinates(address) {
@@ -207,20 +351,20 @@
             }
         }
 
-        // TODO: A modifier pour récupérer les markers depuis la base de données
-        getMarkers() {
-            return this.MARKERS;
-        }
-
         async displayAndPopulateModal(lat, lng) {
             const modal = $('#modalAddMarker');
             modal.modal('show');
             const addressDatas = await this.getAddressFromCoordinates(lat, lng);
             console.log(addressDatas);
-            document.querySelector('#address').value = addressDatas.address.road;
-            document.querySelector(`#city`).value = addressDatas.address.city;
-            document.querySelector(`#postalCode`).value = addressDatas.address.postcode;
-            document.querySelector(`#country`).value = addressDatas.address.country;
+
+            document.querySelector(`#name`).value = "";
+            document.querySelector(`#description`).value = "";
+            document.querySelector(`#macAddr`).value = "";
+
+            document.querySelector('#address').value = (addressDatas.address.road) ? addressDatas.address.road : "";
+            document.querySelector(`#city`).value = (addressDatas.address.city) ? addressDatas.address.city : "";
+            document.querySelector(`#postalCode`).value = (addressDatas.address.postcode) ? addressDatas.address.postcode : "";
+            document.querySelector(`#country`).value = (addressDatas.address.country) ? addressDatas.address.country : "";
 
 
             document.querySelector(`#lat`).value = lat;
@@ -238,6 +382,7 @@
                 modal.modal('hide');
 
                 const datas = {
+                    type: document.querySelector('#type').value,
                     name: document.querySelector('#name').value,
                     title: document.querySelector('#name').value,
                     description: document.querySelector('#description').value,
@@ -252,14 +397,150 @@
                 classThis.MARKERS.push(datas);
                 classThis.displayMarkerCluster();
 
+                classThis.insertOxBaseInDB(datas);
+
                 console.log(this);
                 this.removeEventListener('click', submitModal);
             });
         }
 
+        /**
+         * Centre la carte sur la position du marker
+         * * @param {object} marker
+         */
+        centerOnMarker(marker) {
+            console.log("center");
+
+            const coords = new L.LatLng(marker.lat, marker.lng)
+
+            // TODO: A REVOIR
+            const popup = L.popup()
+                .setLatLng(coords)
+                .setContent('<p>Hello world!<br />This is a nice popup.</p>')
+                .openOn(this.MAP);
+
+            // center map view
+            this.MAP.setView(coords, this.DEFAULT_ZOOM);
+        }
+
+        async getAllOxBaseInDB() {
+            const url = `${this.API_URL}?API=getAllOxBase`;
+            const answer = await fetch(url);
+            if(answer.ok) {
+                const all = await answer.json();
+                all.forEach(OxBaseDatas => {
+                    OxBaseDatas.title = OxBaseDatas.name;
+                });
+
+                return all;
+            }
+        }
+
+        async insertOxBaseInDB(datas) {
+            const url = `${this.API_URL}`;
+
+            datas.API = "insertOxBase";
+
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(datas)
+            }
+
+            const answer = await fetch(url, options);
+            return answer.ok;
+        }
+
+        async updateOxBaseInDB(datas) {
+            const url = `${this.API_URL}`;
+
+            datas.API = "updateOxBase";
+
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(datas)
+            }
+
+            const answer = await fetch(url, options);
+            return answer.ok;
+        }
+
+        async deleteOxBaseInDB(datas) {
+            const url = `${this.API_URL}`;
+
+            datas.API = "deleteOxBase";
+
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(datas)
+            }
+
+            const answer = await fetch(url, options);
+            return answer.ok;
+        }
     }
 
-    const currentMap = new LeafletMap(Markers);
+    const defaultMarkers = [{
+        id: 0,
+        type: 'OxBase',
+        name: 'OxBase',
+        title: 'OxBase',
+        description: 'OxBase',
+        lat: 46.2046,
+        lng: 6.1565,
+        address: '',
+        city: '',
+        postalCode: '',
+        country: ''
+    }, {
+        id: 1,
+        type: 'OxBase',
+        name: 'OxBase',
+        title: 'OxBase',
+        description: 'OxBase',
+        lat: 46.2046,
+        lng: 6.1565,
+        address: '',
+        city: '',
+        postalCode: '',
+        country: ''
+    },{
+        id: 2,
+        type: 'OxBase',
+        name: 'OxBase',
+        title: 'OxBase',
+        description: 'OxBase',
+        lat: 46.2046,
+        lng: 6.1565,
+        address: '',
+        city: '',
+        postalCode: '',
+        country: ''
+    },{
+        id: 3,
+        pId: 0,
+        type: 'OxBase',
+        name: 'OxBase',
+        title: 'OxBase',
+        description: 'OxBase',
+        lat: 46.2046,
+        lng: 6.2565,
+        address: '',
+        city: '',
+        postalCode: '',
+        country: ''
+    }];
+
+    const LeafletMapInstance = new LeafletMap(defaultMarkers);
+    const TreeViewInstance = new TreeView(LeafletMapInstance);
 
 </script>
 </body>

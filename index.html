@@ -220,19 +220,24 @@
             this.zTreeObj.selectNode(this.zTreeObj.getNodeByParam("id", 103));
         }
 
+
+        _getAllNodes(){
+            let allNodes = this.zTreeObj.getNodes();
+            allNodes = this.zTreeObj.transformToArray(allNodes);
+            return allNodes;
+        }
+
         /**
          * Sélectionne un node de l'arbre
          * @param {object} node
          * @public
          */
        selectNode(node) {
-            let treeObj = $.fn.zTree.getZTreeObj("tree");
-            let allNodes = treeObj.getNodes();
-            allNodes = treeObj.transformToArray(allNodes);
+            const allNodes = this._getAllNodes()
 
             const nodeInstance = allNodes.find(e => parseInt(e.id) === parseInt(node.id));
             if(nodeInstance) {
-                treeObj.selectNode(nodeInstance);
+                this.zTreeObj.selectNode(nodeInstance);
             } else {
                 console.log('node not found');
                 return false;
@@ -248,7 +253,22 @@
             for(let site of sites){
                 select.append('<option value="'+site.id+'">'+site.name+'</option>');
             }
+            select.change(() =>{
+                let value = select.val();
+                if(value === ''){
+                    return null;
+                }
+                this._deleteAllNodes();
+            });
         }
+
+        _deleteAllNodes(){
+            let nodes = this._getAllNodes()
+            for (let i=0, l=nodes.length; i < l; i++) {
+                this.zTreeObj.removeNode(nodes[i]);
+            }
+        }
+
     }
 
     class LeafletMap {
@@ -533,6 +553,32 @@
     const defaultSite = [{
         id : 0,
         name : "Site 1",
+    }]
+
+    const siteNTest = [{
+        id: 0,
+        type: 'OxBase',
+        name: 'OxBase',
+        title: 'OxBase',
+        description: 'OxBase',
+        lat: 46.2046,
+        lng: 6.1565,
+        address: '',
+        city: '',
+        postalCode: '',
+        country: ''
+    },{
+        id: 1,
+        type: 'OxBase',
+        name: 'OxBase',
+        title: 'OxBase',
+        description: 'OxBase',
+        lat: 46.2046,
+        lng: 6.1565,
+        address: '',
+        city: '',
+        postalCode: '',
+        country: ''
     }]
 
     const defaultMarkers = [{

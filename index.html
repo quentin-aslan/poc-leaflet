@@ -41,10 +41,14 @@
     <div class="row">
 
         <div class="col-md-4">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">Tree view</h3>
+            <div class="panel panel-default" style="place-content: space-between">
+                <div class="panel-heading" style="display: flex">
+
+                    <select id="selectSite"  class="form-control col-md-8" >
+                        <option value="">Sélectionner un site</option>
+                    </select>
                 </div>
+
 
                 <div class="panel-body">
                     <ul id="tree" class="ztree" style="width:250px; overflzow:auto"></ul>
@@ -146,7 +150,7 @@
          * @param LeafletMap
          */
 
-        constructor(LeafletMap) {
+        constructor(LeafletMap, sites = []) {
             this.LeafletMap = LeafletMap;
             this.LeafletMap.TreeView = this; // On passe la référence de la classe TreeView à la LeafletMap
 
@@ -157,6 +161,9 @@
             this.zTreeObj = null;
 
             this.initTreeView();
+            this.sites = sites;
+
+            this.populateSelectSites(sites)
         }
 
         onClickNode(event, treeId, treeNode) {
@@ -232,6 +239,16 @@
             }
         }
 
+        /** selectSite pour tous les sites du projet **/
+
+        populateSelectSites(sites){
+            let select = $('#selectSite');
+            select.empty();
+            select.append('<option value="">Select a site</option>');
+            for(let site of sites){
+                select.append('<option value="'+site.id+'">'+site.name+'</option>');
+            }
+        }
     }
 
     class LeafletMap {
@@ -317,7 +334,7 @@
                 const icon = (marker.type === 'OxBase') ? 'img/oxbase.png' : 'img/sensor.png';
 
                 marker.icon = this.getOxBaseIcon();
-                const LMarker = L.marker(markerLatLng, marker,   /* ouvrir le groupe */);
+                const LMarker = L.marker(markerLatLng, marker); /* ouvrir le groupe */
                 LMarker.bindPopup(`
                     <h4>${marker.name}</h4>
 
@@ -513,6 +530,11 @@
         }
     }
 
+    const defaultSite = [{
+        id : 0,
+        name : "Site 1",
+    }]
+
     const defaultMarkers = [{
         id: 0,
         type: 'OxBase',
@@ -577,8 +599,10 @@
         country: ''
     }];
 
+
+
     const LeafletMapInstance = new LeafletMap(defaultMarkers);
-    const TreeViewInstance = new TreeView(LeafletMapInstance);
+    const TreeViewInstance = new TreeView(LeafletMapInstance, defaultSite);
 
 </script>
 </body>

@@ -257,60 +257,42 @@
 
             this.TreeView = null; // Instance de la class TreeView
 
-            this.initLeafletMap();
+            this._initLeafletMap();
 
             this.displayMarkerCluster();
         }
 
+        // ✅ PUBLIC FUNCTIONS ✅
+
         /**
-         * Initialise la carte Leaflet
-         * @return {void}
+         * Center map on marker position
+         * @param {object} marker
          */
-        initLeafletMap() {
-            const LeafletMap = this;
-            const mapOptions = {
-                contextmenu: true,
-                contextmenuWidth: 150,
-                contextmenuItems: [{
-                    text: 'Add marker with modal',
-                    callback(e) {
-                        LeafletMap.displayAndPopulateModal(e.latlng.lat, e.latlng.lng);
-                    }
-                }, {
-                    text: 'Center map here',
-                    callback(e) {
-                        LeafletMap.MAP.panTo(e.latlng);
-                    }
-                },{
-                    text: 'Zoom in',
-                    callback(e) {
-                        console.log(this);
-                        LeafletMap.MAP.zoomIn();
-                    }
-                },{
-                    text: 'Zoom out',
-                    callback(e) {
-                        LeafletMap.MAP.zoomOut();
-                    }
-                },{
-                    text: 'Show coordinates',
-                    callback(e) {
-                        console.log(e);
-                        alert(e.latlng.toString());
-                    }
-                }]
-            };
+        centerOnMarker(marker) {
+            const coords = new L.LatLng(marker.lat, marker.lng)
 
-            const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+            const markerInstance = this._getMarkerInstance(marker.id);
+            markerInstance.openPopup();
 
-            this.MAP = L.map('leafletMap', mapOptions).setView(this.DEFAULT_COORDINATES, this.DEFAULT_ZOOM);
-            L.tileLayer(this.TILE_URL, {
-                attribution
-            }).addTo(this.MAP);
+            console.log("Centering on marker");
+
+            // center map view
+            this.MAP.setView(coords, this.DEFAULT_ZOOM);
         }
 
-        async displayMarkerCluster() {
-            this.MARKER_CLUSTER_GROUP.clearLayers();
+        /**
+         * Displays all markers on the map
+         * Use MarkerClusterGroup to display markers in a cluster
+         * @returns {Promise<void>}
+         * @public
+         */
+        async displayMarkerCluster(markers = null) {
+            if(markers) { // Si des nouveaux markers sont passés en paramètre, on les utilises comme base
+                this.MARKERS = markers;
+            }
+
+            this.MARKER_CLUSTER_GROUP.clearLayers(); // Delete all layers
+
             for(const marker of this.MARKERS) {
                 // If marker has no coordinates, we don't add it to the map
                 if(!marker.lat || !marker.lng) {
@@ -353,153 +335,21 @@
             }
         }
 
+        // 🔒 PRIVATE FUNCTIONS 🔒
 
-        async getCoordinates(address) {
-            const url = `https://nominatim.openstreetmap.org/search?q=${address}&format=json`;
-            const answer = await fetch(url);
-            if(answer.ok) {
-                const data = await answer.json();
-                return data[0];
-            }
-        }
-
-        async getAddressFromCoordinates(lat, lng) {
+        /**
+         * Make request API for get address from coordinates
+         * @param lat
+         * @param lng
+         * @returns {Promise<any>}
+         * @private
+         */
+        async _getAddressFromCoordinates(lat, lng) {
             const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
             const answer = await fetch(url);
             if(answer.ok) {
                 return await answer.json();
             }
-        }
-
-        async displayAndPopulateModal(lat, lng) {
-            const modal = $('#modalAddMarker');
-            modal.modal('show');
-            const addressDatas = await this.getAddressFromCoordinates(lat, lng);
-
-            document.querySelector(`#name`).value = "";
-            document.querySelector(`#description`).value = "";
-            document.querySelector(`#macAddr`).value = "";
-
-            document.querySelector('#address').value = (addressDatas.address.road) ? addressDatas.address.road : "";
-            document.querySelector(`#city`).value = (addressDatas.address.city) ? addressDatas.address.city : "";
-            document.querySelector(`#postalCode`).value = (addressDatas.address.postcode) ? addressDatas.address.postcode : "";
-            document.querySelector(`#country`).value = (addressDatas.address.country) ? addressDatas.address.country : "";
-
-
-            document.querySelector(`#lat`).value = lat;
-            document.querySelector(`#lat`).disabled = true;
-            document.querySelector(`#lng`).value = lng;
-            document.querySelector(`#lng`).disabled = true;
-
-
-            // Submit and add marker
-            const classThis = this;
-            document.querySelector(`#addMarkerForm`).addEventListener('submit', function submitModal (e) {
-                e.preventDefault();
-
-                const modal = $('#modalAddMarker');
-                modal.modal('hide');
-
-                const datas = {
-                    type: document.querySelector('#type').value,
-                    name: document.querySelector('#name').value,
-                    title: document.querySelector('#name').value,
-                    description: document.querySelector('#description').value,
-                    lat: document.querySelector('#lat').value,
-                    lng: document.querySelector('#lng').value,
-                    address: document.querySelector('#address').value,
-                    city: document.querySelector('#city').value,
-                    postalCode: document.querySelector('#postalCode').value,
-                    country: document.querySelector('#country').value,
-                };
-
-                classThis.MARKERS.push(datas);
-                classThis.displayMarkerCluster();
-
-                classThis.insertOxBaseInDB(datas);
-
-                this.removeEventListener('click', submitModal);
-            });
-        }
-
-        /**
-         * Centre la carte sur la position du marker
-         * * @param {object} marker
-         */
-        centerOnMarker(marker) {
-            const coords = new L.LatLng(marker.lat, marker.lng)
-
-            const markerInstance = this._getMarkerInstance(marker.id);
-            markerInstance.openPopup();
-
-            console.log("Centering on marker");
-
-            // center map view
-            this.MAP.setView(coords, this.DEFAULT_ZOOM);
-        }
-
-        async getAllOxBaseInDB() {
-            const url = `${this.API_URL}?API=getAllOxBase`;
-            const answer = await fetch(url);
-            if(answer.ok) {
-                const all = await answer.json();
-                all.forEach(OxBaseDatas => {
-                    OxBaseDatas.title = OxBaseDatas.name;
-                });
-
-                return all;
-            }
-        }
-
-        async insertOxBaseInDB(datas) {
-            const url = `${this.API_URL}`;
-
-            datas.API = "insertOxBase";
-
-            const options = {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(datas)
-            }
-
-            const answer = await fetch(url, options);
-            return answer.ok;
-        }
-
-        async updateOxBaseInDB(datas) {
-            const url = `${this.API_URL}`;
-
-            datas.API = "updateOxBase";
-
-            const options = {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(datas)
-            }
-
-            const answer = await fetch(url, options);
-            return answer.ok;
-        }
-
-        async deleteOxBaseInDB(datas) {
-            const url = `${this.API_URL}`;
-
-            datas.API = "deleteOxBase";
-
-            const options = {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(datas)
-            }
-
-            const answer = await fetch(url, options);
-            return answer.ok;
         }
 
         /**
@@ -545,6 +395,95 @@
                 popupAnchor: [1, -34],
                 shadowSize: [41, 41]
             });
+        }
+
+        // ⚠️ DEPRECATE FUNCTIONS !!! ==> CREATE NEW FUNCTIONS FOR CRUD OPERATIONS !!!
+
+        /**
+         * Make a request to get all markers from the database
+         * @returns {Promise<Array>}
+         * @private
+         */
+        async _getAllOxBaseInDB() {
+            const url = `${this.API_URL}?API=getAllOxBase`;
+            const answer = await fetch(url);
+            if(answer.ok) {
+                const all = await answer.json();
+                all.forEach(OxBaseDatas => {
+                    OxBaseDatas.title = OxBaseDatas.name;
+                });
+
+                return all;
+            }
+        }
+
+        /**
+         * Make a request to the API to insert a new OxBase
+         * @param datas
+         * @returns {Promise<boolean>}
+         * @private
+         */
+        async _insertOxBaseInDB(datas) {
+            const url = `${this.API_URL}`;
+
+            datas.API = "insertOxBase";
+
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(datas)
+            }
+
+            const answer = await fetch(url, options);
+            return answer.ok;
+        }
+
+        /**
+         * Make a request to the API to update a OxBase
+         * @param datas
+         * @returns {Promise<boolean>}
+         * @private
+         */
+        async _updateOxBaseInDB(datas) {
+            const url = `${this.API_URL}`;
+
+            datas.API = "updateOxBase";
+
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(datas)
+            }
+
+            const answer = await fetch(url, options);
+            return answer.ok;
+        }
+
+        /**
+         * Make a request to the API to delete a OxBase
+         * @param datas
+         * @returns {Promise<boolean>}
+         * @private
+         */
+        async _deleteOxBaseInDB(datas) {
+            const url = `${this.API_URL}`;
+
+            datas.API = "deleteOxBase";
+
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(datas)
+            }
+
+            const answer = await fetch(url, options);
+            return answer.ok;
         }
     }
 

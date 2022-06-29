@@ -218,7 +218,7 @@
          * @param {object} node
          * @public
          */
-        selectNode(node) {
+       selectNode(node) {
             let treeObj = $.fn.zTree.getZTreeObj("tree");
             let allNodes = treeObj.getNodes();
             allNodes = treeObj.transformToArray(allNodes);
@@ -317,8 +317,7 @@
                 const icon = (marker.type === 'OxBase') ? 'img/oxbase.png' : 'img/sensor.png';
 
                 marker.icon = this.getOxBaseIcon();
-
-                const LMarker = L.marker(markerLatLng, marker);
+                const LMarker = L.marker(markerLatLng, marker,   /* ouvrir le groupe */);
                 LMarker.bindPopup(`
                     <h4>${marker.name}</h4>
 

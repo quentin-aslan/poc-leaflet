@@ -28,6 +28,12 @@
     <!-- Import zTree library -->
     <link rel="stylesheet" href="assets/zTree/zTreeStyle.css" type="text/css">
     <script type="text/javascript" src="assets/zTree/jquery.ztree.core.js"></script>
+    <style>
+        .ztree {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 
 </head>
 <body>
@@ -45,8 +51,8 @@
                     <div class="panel-heading">
                         <h3 class="panel-title">Tree view</h3>
                     </div>
-                    <div class="panel-body">
-                        <ul id="tree" class="ztree" style="width:250px; overflzow:auto"></ul>
+                    <div class="panel-body" style="padding: 40px">
+                        <ul id="tree" class="ztree" style="width:300px; overflzow:auto"></ul>
                     </div>
                 </div>
             </div>
@@ -161,7 +167,7 @@
 
         addIcon(markers) {
             for(let marker of markers) {
-                marker.icon = "assets/images/ox_base_lora_16x16.png"
+                marker.icon = "assets/images/ox_base_lora_20x20.png";
             }
 
             return markers;
@@ -176,7 +182,7 @@
                 view: {
                     dblClickExpand: false,
                     showLine: true,
-                    selectedMulti: false
+                    selectedMulti: false,
                 },
                 data: {
                     simpleData: {
@@ -218,6 +224,7 @@
                 return false;
             }
         }
+
 
     }
 

@@ -318,9 +318,17 @@
                 }
 
                 const markerLatLng = new L.LatLng(marker.lat, marker.lng);
-                const icon = (marker.type === 'OxBase') ? 'img/oxbase.png' : 'img/sensor.png';
 
-                marker.icon = this.getOxBaseIcon();
+                // Get marker icon
+                switch(marker.type) {
+                    case "OxBase":
+                        marker.icon = this._getOxBaseIcon();
+                        break;
+
+                    default:
+                        marker.icon = this._getDefaultMarkerIcon();
+                        break;
+                }
 
                 const LMarker = L.marker(markerLatLng, marker);
                 LMarker.bindPopup(`
@@ -345,15 +353,6 @@
             }
         }
 
-        getOxBaseIcon() {
-            // Use the Leaflet icon class to create an icon from the png file
-            return L.icon({
-                iconUrl: 'assets/images/ox_base_lora_400x400.png',
-                iconSize: [32, 37],
-                iconAnchor: [16, 37],
-                popupAnchor: [0, -37]
-            })
-        }
 
         async getCoordinates(address) {
             const url = `https://nominatim.openstreetmap.org/search?q=${address}&format=json`;
@@ -517,6 +516,35 @@
                 }
             });
             return (markerInstance) ? markerInstance : null;
+        }
+
+        /**
+         * Get leaflet icon instance of an OxBase
+         * @returns {L.icon}
+         * @private
+         */
+        _getOxBaseIcon() {
+            return L.icon({
+                iconUrl: 'assets/images/ox_base_lora_400x400.png',
+                iconSize: [32, 37],
+                iconAnchor: [16, 37],
+                popupAnchor: [0, -37]
+            })
+        }
+
+        /**
+         * Get leaflet default marker icon instance
+         * @returns {L.icon}
+         * @private
+         */
+        _getDefaultMarkerIcon() {
+            return L.icon({
+                iconUrl: 'assets/leaflet/images/marker-icon.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
         }
     }
 

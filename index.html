@@ -171,7 +171,11 @@
 
         addIcon(markers) {
             for(let marker of markers) {
-                marker.icon = "assets/images/ox_base_lora_16x16.png";
+
+                if(marker.type === "OxBase") {
+                    marker.icon = "assets/images/ox_base_lora_16x16.png";
+                }
+
                 if(!marker.lat || !marker.lng) {
                     marker.font = {color: "red"};
                 }
@@ -329,12 +333,14 @@
                     <p>${marker.lng}</p>
                 `);
 
+                // Lorsque l'utilisateur clique sur un marker
                 LMarker.on('click', (e) => {
                     this.TreeView.selectNode(marker);
                     this.centerOnMarker(marker);
                 });
 
                 this.MARKER_CLUSTER_GROUP.addLayer(LMarker);
+
                 this.MAP.addLayer(this.MARKER_CLUSTER_GROUP);
             }
         }
@@ -566,8 +572,34 @@
     },{
         id: 4,
         pId: 0,
-        type: 'OxBase sans coords',
-        name: 'OxBase',
+        type: 'OxBase',
+        name: 'OxBase sans coords',
+        title: 'OxBase',
+        description: 'OxBase',
+        lat: null,
+        lng: null,
+        address: '',
+        city: '',
+        postalCode: '',
+        country: ''
+    },{
+        id: 109,
+        pId: 4,
+        type: 'Sensor',
+        name: 'Capteur sans coordonnée',
+        title: 'DHT22',
+        description: 'Récupère la température et l\'humidité',
+        lat: null,
+        lng: null,
+        address: '',
+        city: '',
+        postalCode: '',
+        country: ''
+    },{
+        id: 20,
+        pId: -1,
+        type: 'Sensor',
+        name: 'Capteur de temperature',
         title: 'OxBase',
         description: 'OxBase',
         lat: null,
@@ -580,6 +612,23 @@
 
     const LeafletMapInstance = new LeafletMap(defaultMarkers);
     const TreeViewInstance = new TreeView(LeafletMapInstance);
+
+    /* Propriété d'un marker
+    {
+        id: Number,
+        pId: Number, // Si un OxBase à un pId alors son parent est son forwarder
+        type: String ENUM["OxBase", "Sensor"],
+        sensorType: String ENUM["Temperature", "Humidity", ...],
+        name: String,
+        description: String,
+        lat: String,
+        lng: String,
+        address: String,
+        city: String,
+        postalCode: String,
+        country: String
+    }
+     */
 
 </script>
 </body>

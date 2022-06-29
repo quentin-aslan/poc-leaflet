@@ -165,6 +165,7 @@
                 return;
             }
 
+            this.LeafletMap.MAP.closePopup(); // On ferme le popup si il est ouvert
             this.LeafletMap.centerOnMarker(treeNode);
         }
 
@@ -317,8 +318,8 @@
 
                 marker.icon = this.getOxBaseIcon();
 
-                const markerMarker = L.marker(markerLatLng, marker);
-                markerMarker.bindPopup(`
+                const LMarker = L.marker(markerLatLng, marker);
+                LMarker.bindPopup(`
                     <h4>${marker.name}</h4>
 
                     <p>${marker.type}</p>
@@ -328,11 +329,12 @@
                     <p>${marker.lng}</p>
                 `);
 
-                markerMarker.on('click', (e) => {
+                LMarker.on('click', (e) => {
                     this.TreeView.selectNode(marker);
+                    this.centerOnMarker(marker);
                 });
 
-                this.MARKER_CLUSTER_GROUP.addLayer(markerMarker);
+                this.MARKER_CLUSTER_GROUP.addLayer(LMarker);
                 this.MAP.addLayer(this.MARKER_CLUSTER_GROUP);
             }
         }
@@ -420,11 +422,12 @@
          * * @param {object} marker
          */
         centerOnMarker(marker) {
-
             const coords = new L.LatLng(marker.lat, marker.lng)
 
-            // TODO: A REVOIR => Il faudrait pouvoir afficher le pop du marker sans avoir à en créer un nouveau !!
-            //L.popup().setLatLng(coords).setContent('<p>Hello world!<br />This is a nice popup.</p>').openOn(this.MAP);
+            const markerInstance = this._getMarkerInstance(marker.id);
+            markerInstance.openPopup();
+
+            console.log("Centering on marker");
 
             // center map view
             this.MAP.setView(coords, this.DEFAULT_ZOOM);
@@ -492,6 +495,22 @@
 
             const answer = await fetch(url, options);
             return answer.ok;
+        }
+
+        /**
+         * Get specific marker from marker cluster leaflet
+         * @private
+         * @return {object|null} marker instance
+         */
+        _getMarkerInstance(id) {
+            let markerInstance;
+            this.MARKER_CLUSTER_GROUP.eachLayer((marker) => {
+                if(marker.options.id === id) {
+                    markerInstance = marker;
+                    // On ne peut pas return ou break ..
+                }
+            });
+            return (markerInstance) ? markerInstance : null;
         }
     }
 

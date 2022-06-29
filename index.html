@@ -45,6 +45,7 @@
                     <div class="panel-heading">
                         <h3 class="panel-title">Tree view</h3>
                     </div>
+
                     <div class="panel-body">
                         <ul id="tree" class="ztree" style="width:250px; overflzow:auto"></ul>
                     </div>
@@ -136,13 +137,14 @@
     class TreeView {
 
         /**
+         * Cette class gère l'arbre situé à droite de la carte.
          * https://treejs.cn/v3/api.php
          * @param LeafletMap
          */
 
         constructor(LeafletMap) {
             this.LeafletMap = LeafletMap;
-            this.LeafletMap.TreeView = this;
+            this.LeafletMap.TreeView = this; // On passe la référence de la classe TreeView à la LeafletMap
 
             this.tree = null;
 
@@ -222,8 +224,11 @@
     }
 
 
-
     class LeafletMap {
+        /**
+         * Cette class gère la carte à droite de l'arbre
+         * @param markers
+         */
         constructor(markers = []) {
             this.MAP = null;
             this.MARKER_CLUSTER_GROUP = L.markerClusterGroup();

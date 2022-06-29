@@ -156,8 +156,6 @@
         }
 
         onClickNode(event, treeId, treeNode) {
-            console.log(treeNode);
-
             this.LeafletMap.centerOnMarker(treeNode);
         }
 
@@ -195,10 +193,6 @@
             $.fn.zTree.init(this.TREE_DOM, setting, this.addIcon(this.LeafletMap.MARKERS)); // Initialise l'arbre avec les données
             this.zTreeObj = $.fn.zTree.getZTreeObj("tree");
             this.zTreeObj.selectNode(this.zTreeObj.getNodeByParam("id", 103));
-
-            setTimeout(() => {
-                this.selectNode(3);
-            }, 2000);
         }
 
         /**
@@ -211,7 +205,6 @@
             let allNodes = treeObj.getNodes();
             allNodes = treeObj.transformToArray(allNodes);
 
-            console.log(allNodes);
             const nodeInstance = allNodes.find(e => parseInt(e.id) === parseInt(node.id));
             if(nodeInstance) {
                 treeObj.selectNode(nodeInstance);
@@ -222,7 +215,6 @@
         }
 
     }
-
 
     class LeafletMap {
         /**
@@ -253,41 +245,35 @@
          * @return {void}
          */
         initLeafletMap() {
+            const LeafletMap = this;
             const mapOptions = {
                 contextmenu: true,
                 contextmenuWidth: 150,
                 contextmenuItems: [{
                     text: 'Add marker with modal',
-                    callback: (e) => {
+                    callback(e) {
                         this.displayAndPopulateModal(e.latlng.lat, e.latlng.lng);
-                    }
-                },{
-                    text: 'Add marker',
-                    callback: function (e) {
-                        const marker = L.marker(e.latlng, {
-                            title: 'New marker',
-                            description: 'This is a new marker',
-                        });
-                        marker.addTo(map);
                     }
                 }, {
                     text: 'Center map here',
-                    callback: function (e) {
-                        map.panTo(e.latlng);
+                    callback(e) {
+                        LeafletMap.MAP.panTo(e.latlng);
                     }
                 },{
                     text: 'Zoom in',
-                    callback: function (e) {
-                        map.zoomIn();
+                    callback(e) {
+                        console.log(this);
+                        LeafletMap.MAP.zoomIn();
                     }
                 },{
                     text: 'Zoom out',
-                    callback: function (e) {
-                        map.zoomOut();
+                    callback(e) {
+                        LeafletMap.MAP.zoomOut();
                     }
                 },{
                     text: 'Show coordinates',
-                    callback: function (e) {
+                    callback(e) {
+                        console.log(e);
                         alert(e.latlng.toString());
                     }
                 }]
@@ -360,7 +346,6 @@
             const modal = $('#modalAddMarker');
             modal.modal('show');
             const addressDatas = await this.getAddressFromCoordinates(lat, lng);
-            console.log(addressDatas);
 
             document.querySelector(`#name`).value = "";
             document.querySelector(`#description`).value = "";
@@ -404,7 +389,6 @@
 
                 classThis.insertOxBaseInDB(datas);
 
-                console.log(this);
                 this.removeEventListener('click', submitModal);
             });
         }
@@ -414,15 +398,11 @@
          * * @param {object} marker
          */
         centerOnMarker(marker) {
-            console.log("center");
 
             const coords = new L.LatLng(marker.lat, marker.lng)
 
-            // TODO: A REVOIR
-            const popup = L.popup()
-                .setLatLng(coords)
-                .setContent('<p>Hello world!<br />This is a nice popup.</p>')
-                .openOn(this.MAP);
+            // TODO: A REVOIR => Il faudrait pouvoir afficher le pop du marker sans avoir à en créer un nouveau !!
+            //L.popup().setLatLng(coords).setContent('<p>Hello world!<br />This is a nice popup.</p>').openOn(this.MAP);
 
             // center map view
             this.MAP.setView(coords, this.DEFAULT_ZOOM);

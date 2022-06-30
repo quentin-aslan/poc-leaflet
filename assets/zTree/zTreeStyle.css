@@ -70,8 +70,8 @@ website:	http://code.google.com/p/jquerytree/
 .ztree li span.button.bottom_docu{background-position:-56px -36px}
 .ztree li span.button.noline_docu{ background:none;}
 
-.ztree li span.button.ico_open{padding: 10px; background-position:-110px -16px; vertical-align:top; *vertical-align:middle}
-.ztree li span.button.ico_close{padding: 10px; background-position:-110px 0; vertical-align:top; *vertical-align:middle}
+.ztree li span.button.ico_open{padding: 10px; background-position:-150px -16px; vertical-align:top; *vertical-align:middle}
+.ztree li span.button.ico_close{padding:15px; background-position:-110px 0; vertical-align:top; *vertical-align:middle}
 .ztree li span.button.ico_docu{padding: 10px; margin-left: 10px; background-position:-110px -32px; vertical-align:top; *vertical-align:middle;margin-top: 2px}/*logo*/
 .ztree li span.button.edit {padding: 10px; background-position:-110px -48px; vertical-align:top; *vertical-align:middle}
 .ztree li span.button.remove {margin-right:2px; background-position:-110px -64px; vertical-align:top; *vertical-align:middle}

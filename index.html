@@ -31,10 +31,10 @@
 
 </head>
 <body>
-<!-- Treeview + Map -->
+<!-- Arbre de navigation + Map -->
 <div class="container-fluid">
     <div class="row">
-        <div class="col-lg-12">
+        <div class="col-md-12">
             <h1>POC - Leaflet</h1>
         </div>
     </div>
@@ -44,7 +44,7 @@
             <div class="panel panel-default" style="place-content: space-between">
                 <div class="panel-heading" style="display: flex">
 
-                    <select id="selectSite"  class="form-control col-md-8">
+                    <select id="selectSite"  class="form-control col-md-8" >
                         <option value="">Sélectionner un site</option>
                     </select>
                 </div>
@@ -61,7 +61,7 @@
         </div>
 
         <div class="col-md-8">
-            <div id="leafletMap" style="width: 100%; height: 100rem;"></div>
+            <div id="leafletMap" style="width: 100%; height: 900px;"></div>
         </div>
     </div>
 </div>
@@ -178,14 +178,18 @@
 
         addIcon(markers) {
             for(let marker of markers) {
-                marker.icon = "assets/images/ox_base_lora_16x16.png";
-               /* marker.iconSensor = "assets/images/sensor16x16.png";*/
+
+                if(marker.type === "OxBase") {
+                    marker.icon = "assets/images/ox_base_lora_16x16.png";
+                }else if(marker.type === "Sensor") {
+                    marker.icon = "assets/images/sensor16x16.png";
+                }
+
                 if(!marker.lat || !marker.lng) {
                     marker.font = {color: "red"};
                 }
             }
             return markers;
-
         }
 
         /**
@@ -280,7 +284,12 @@
          */
         constructor(markers = []) {
             this.MAP = null;
-            this.MARKER_CLUSTER_GROUP = L.markerClusterGroup();
+
+            this.clusterGroup = L.markerClusterGroup();
+            this.layerOxBase = L.layerGroup();
+            this.layerSensor = L.layerGroup();
+
+
             this.MARKERS = markers;
 
             this.DEFAULT_COORDINATES = [46.2046, 6.1565];
@@ -292,16 +301,128 @@
 
             this.TreeView = null; // Instance de la class TreeView
 
-            this.initLeafletMap();
+            this._initLeafletMap();
 
             this.displayMarkerCluster();
+            this.defineLayersAndControls();
         }
+
+        // ✅ PUBLIC FUNCTIONS ✅
+
+        /**
+         * Center map on marker position
+         * @param {object} marker
+         */
+        centerOnMarker(marker) {
+            const coords = new L.LatLng(marker.lat, marker.lng)
+
+            const markerInstance = this._getMarkerInstance(marker.id);
+            markerInstance.openPopup();
+
+            console.log("Centering on marker");
+
+            // center map view
+            this.MAP.setView(coords, this.DEFAULT_ZOOM);
+        }
+
+        /**
+         * Displays all markers on the map
+         * Use MarkerClusterGroup to display markers in a cluster
+         * @returns {Promise<void>}
+         * @public
+         */
+        async displayMarkerCluster(markers = null) {
+            if(markers) { // Si des nouveaux markers sont passés en paramètre, on les utilises comme base
+                this.MARKERS = markers;
+            }
+
+            // Delete all layers
+            this.layerOxBase.clearLayers();
+            this.layerSensor.clearLayers();
+
+            // Add markers to cluster group
+            for(const marker of this.MARKERS) {
+                // If marker has no coordinates, we don't add it to the map
+                if(!marker.lat || !marker.lng) {
+                    continue;
+                }
+
+                const markerLatLng = new L.LatLng(marker.lat, marker.lng);
+
+                // Get marker icon
+                switch(marker.type) {
+                    case "OxBase":
+                        marker.icon = this._getOxBaseIcon();
+                        break;
+
+                    case "Sensor":
+                        marker.icon = this._getSensorIcon();
+                        break;
+
+                    default:
+                        marker.icon = this._getDefaultMarkerIcon();
+                        break;
+                }
+
+                const LMarker = L.marker(markerLatLng, marker);
+                LMarker.bindPopup(`
+                    <h4>${marker.name}</h4>
+
+                    <p>${marker.type}</p>
+
+                    <p>${marker.lat}</p>
+
+                    <p>${marker.lng}</p>
+                `);
+
+                // Lorsque l'utilisateur clique sur un marker
+                LMarker.on('click', (e) => {
+                    this.TreeView.selectNode(marker);
+                    this.centerOnMarker(marker);
+                });
+
+                switch(marker.type) {
+                    case "OxBase":
+                        this.layerOxBase.addLayer(LMarker);
+                        break;
+
+                    case "Sensor":
+                        this.layerSensor.addLayer(LMarker);
+                        break;
+
+                    default:
+                        console.log(`Unknown marker type: ${marker.type}`);
+                }
+
+                this.clusterGroup.addLayer(this.layerSensor);
+                this.clusterGroup.addLayer(this.layerOxBase);
+
+                this.MAP.addLayer(this.clusterGroup);
+            }
+
+        }
+
+        /**
+         * Create leaflet layers and controls for sorting markers
+         */
+        defineLayersAndControls() {
+            const controls = {
+                OxBase: this.layerOxBase,
+                Sensors: this.layerSensor,
+            };
+
+            // Add controls and layers on map
+            L.control.layers(null, controls).addTo(this.MAP);
+        }
+
+        // 🔒 PRIVATE FUNCTIONS 🔒
 
         /**
          * Initialise la carte Leaflet
          * @return {void}
+         * @private
          */
-        initLeafletMap() {
+        _initLeafletMap() {
             const LeafletMap = this;
             const mapOptions = {
                 contextmenu: true,
@@ -309,7 +430,7 @@
                 contextmenuItems: [{
                     text: 'Add marker with modal',
                     callback(e) {
-                        LeafletMap.displayAndPopulateModal(e.latlng.lat, e.latlng.lng);
+                        LeafletMap._displayAndPopulateModal(e.latlng.lat, e.latlng.lng);
                     }
                 }, {
                     text: 'Center map here',
@@ -344,40 +465,51 @@
             }).addTo(this.MAP);
         }
 
-        async displayMarkerCluster() {
-            this.MARKER_CLUSTER_GROUP.clearLayers();
-            for(const marker of this.MARKERS) {
-                // If marker has no coordinates, we don't add it to the map
-                if(!marker.lat || !marker.lng) {
-                    continue;
-                }
-
-                const markerLatLng = new L.LatLng(marker.lat, marker.lng);
-
-                marker.icon = this.getOxBaseIcon();
-                const LMarker = L.marker(markerLatLng, marker);
-                LMarker.bindPopup(`
-                    <h4>${marker.name}</h4>
-
-                    <p>${marker.type}</p>
-
-                    <p>${marker.lat}</p>
-
-                    <p>${marker.lng}</p>
-                `);
-
-                LMarker.on('click', (e) => {
-                    this.TreeView.selectNode(marker);
-                    this.centerOnMarker(marker);
-                });
-
-                this.MARKER_CLUSTER_GROUP.addLayer(LMarker);
-                this.MAP.addLayer(this.MARKER_CLUSTER_GROUP);
+        /**
+         * Make request API for get address from coordinates
+         * @param lat
+         * @param lng
+         * @returns {Promise<any>}
+         * @private
+         */
+        async _getAddressFromCoordinates(lat, lng) {
+            const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+                const answer = await fetch(url); /* ouvrir le groupe */
+            if(answer.ok) {
+                return await answer.json();
             }
         }
 
-       getOxBaseIcon() {
-            // Use the Leaflet icon class to create an icon from the png file
+        /**
+         * Get specific marker from marker cluster leaflet
+         * @private
+         * @return {object|null} marker instance
+         */
+        _getMarkerInstance(id) {
+            let markerInstance;
+            this.layerOxBase.eachLayer((marker) => {
+                if(marker.options.id === id) {
+                    markerInstance = marker;
+                    // On ne peut pas return ou break ..
+                }
+            });
+
+            this.layerSensor.eachLayer((marker) => {
+                if(marker.options.id === id) {
+                    markerInstance = marker;
+                    // On ne peut pas return ou break ..
+                }
+            });
+
+            return (markerInstance) ? markerInstance : null;
+        }
+
+        /**
+         * Get leaflet icon instance of an OxBase
+         * @returns {L.icon}
+         * @private
+         */
+        _getOxBaseIcon() {
             return L.icon({
                 iconUrl: 'assets/images/ox_base_lora_400x400.png',
                 iconSize: [60, 60],
@@ -386,113 +518,43 @@
             })
         }
 
-        // Get iconSensor or iconOxBrase from type of array defaultMarkers
-
-        /*getSensorOrOxBasIcon(){
-            let sensor = defaultMarkers.find(e => e.type === 'sensor');
-            if(sensor){
-                return L.icon({
-                    iconUrl: 'assets/images/sensor400x400.png',
-                    iconSize: [60, 60],
-                    iconAnchor: [16, 37],
-                    popupAnchor: [0, -37]
-                });
-            } else if(defaultMarkers.find(e => e.type === 'ox_base')){
-                return L.icon({
-                    iconUrl: 'assets/images/ox_base_lora_400x400.png',
-                    iconSize: [60, 60],
-                    iconAnchor: [16, 37],
-                    popupAnchor: [0, -37]
-                });
-            }
-        }*/
-
-
-        async getCoordinates(address) {
-            const url = `https://nominatim.openstreetmap.org/search?q=${address}&format=json`;
-            const answer = await fetch(url);
-            if(answer.ok) {
-                const data = await answer.json();
-                return data[0];
-            }
-        }
-
-        async getAddressFromCoordinates(lat, lng) {
-            const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
-            const answer = await fetch(url);
-            if(answer.ok) {
-                return await answer.json();
-            }
-        }
-
-        async displayAndPopulateModal(lat, lng) {
-            const modal = $('#modalAddMarker');
-            modal.modal('show');
-            const addressDatas = await this.getAddressFromCoordinates(lat, lng);
-
-            document.querySelector(`#name`).value = "";
-            document.querySelector(`#description`).value = "";
-            document.querySelector(`#macAddr`).value = "";
-
-            document.querySelector('#address').value = (addressDatas.address.road) ? addressDatas.address.road : "";
-            document.querySelector(`#city`).value = (addressDatas.address.city) ? addressDatas.address.city : "";
-            document.querySelector(`#postalCode`).value = (addressDatas.address.postcode) ? addressDatas.address.postcode : "";
-            document.querySelector(`#country`).value = (addressDatas.address.country) ? addressDatas.address.country : "";
-
-
-            document.querySelector(`#lat`).value = lat;
-            document.querySelector(`#lat`).disabled = true;
-            document.querySelector(`#lng`).value = lng;
-            document.querySelector(`#lng`).disabled = true;
-
-
-            // Submit and add marker
-            const classThis = this;
-            document.querySelector(`#addMarkerForm`).addEventListener('submit', function submitModal (e) {
-                e.preventDefault();
-
-                const modal = $('#modalAddMarker');
-                modal.modal('hide');
-
-                const datas = {
-                    type: document.querySelector('#type').value,
-                    name: document.querySelector('#name').value,
-                    title: document.querySelector('#name').value,
-                    description: document.querySelector('#description').value,
-                    lat: document.querySelector('#lat').value,
-                    lng: document.querySelector('#lng').value,
-                    address: document.querySelector('#address').value,
-                    city: document.querySelector('#city').value,
-                    postalCode: document.querySelector('#postalCode').value,
-                    country: document.querySelector('#country').value,
-                };
-
-                classThis.MARKERS.push(datas);
-                classThis.displayMarkerCluster();
-
-                classThis.insertOxBaseInDB(datas);
-
-                this.removeEventListener('click', submitModal);
-            });
+        /**
+         * Get leaflet icon instance of an sensor
+         * @returns {L.icon}
+         * @private
+         */
+        _getSensorIcon() {
+            return L.icon({
+                iconUrl: 'assets/images/sensor_400x400.png',
+                iconSize: [50, 50],
+                iconAnchor: [16, 37],
+                popupAnchor: [0, -37]
+            })
         }
 
         /**
-         * Centre la carte sur la position du marker
-         * * @param {object} marker
+         * Get leaflet default marker icon instance
+         * @returns {L.icon}
+         * @private
          */
-        centerOnMarker(marker) {
-            const coords = new L.LatLng(marker.lat, marker.lng)
-
-            const markerInstance = this._getMarkerInstance(marker.id);
-            markerInstance.openPopup();
-
-            console.log("Centering on marker");
-
-            // center map view
-            this.MAP.setView(coords, this.DEFAULT_ZOOM);
+        _getDefaultMarkerIcon() {
+            return L.icon({
+                iconUrl: 'assets/leaflet/images/marker-icon.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
         }
 
-        async getAllOxBaseInDB() {
+        // ⚠️ DEPRECATE FUNCTIONS !!! ==> CREATE NEW FUNCTIONS FOR CRUD OPERATIONS !!!
+
+        /**
+         * Make a request to get all markers from the database
+         * @returns {Promise<Array>}
+         * @private
+         */
+        async _getAllOxBaseInDB() {
             const url = `${this.API_URL}?API=getAllOxBase`;
             const answer = await fetch(url);
             if(answer.ok) {
@@ -505,7 +567,13 @@
             }
         }
 
-        async insertOxBaseInDB(datas) {
+        /**
+         * Make a request to the API to insert a new OxBase
+         * @param datas
+         * @returns {Promise<boolean>}
+         * @private
+         */
+        async _insertOxBaseInDB(datas) {
             const url = `${this.API_URL}`;
 
             datas.API = "insertOxBase";
@@ -522,7 +590,13 @@
             return answer.ok;
         }
 
-        async updateOxBaseInDB(datas) {
+        /**
+         * Make a request to the API to update a OxBase
+         * @param datas
+         * @returns {Promise<boolean>}
+         * @private
+         */
+        async _updateOxBaseInDB(datas) {
             const url = `${this.API_URL}`;
 
             datas.API = "updateOxBase";
@@ -539,7 +613,13 @@
             return answer.ok;
         }
 
-        async deleteOxBaseInDB(datas) {
+        /**
+         * Make a request to the API to delete a OxBase
+         * @param datas
+         * @returns {Promise<boolean>}
+         * @private
+         */
+        async _deleteOxBaseInDB(datas) {
             const url = `${this.API_URL}`;
 
             datas.API = "deleteOxBase";
@@ -554,22 +634,6 @@
 
             const answer = await fetch(url, options);
             return answer.ok;
-        }
-
-        /**
-         * Get specific marker from marker cluster leaflet
-         * @private
-         * @return {object|null} marker instance
-         */
-        _getMarkerInstance(id) {
-            let markerInstance;
-            this.MARKER_CLUSTER_GROUP.eachLayer((marker) => {
-                if(marker.options.id === id) {
-                    markerInstance = marker;
-                    // On ne peut pas return ou break ..
-                }
-            });
-            return (markerInstance) ? markerInstance : null;
         }
     }
 
@@ -606,8 +670,8 @@
 
     const defaultMarkers = [{
         id: 0,
-        type: 'Sensor',
-        name: 'OxBase',
+        type: 'OxBase',
+        name: 'OxBase BAT A',
         title: 'OxBase',
         description: 'OxBase',
         lat: 46.2046,
@@ -616,35 +680,10 @@
         city: '',
         postalCode: '',
         country: ''
-    }, {
+    },{
         id: 1,
         type: 'OxBase',
-        name: 'OxBase',
-        title: 'OxBase',
-        description: 'OxBase',
-        lat: 46.2046,
-        lng: 6.1565,
-        address: '',
-        city: '',
-        postalCode: '',
-        country: ''
-    },{
-        id: 2,
-        type: 'OxBase',
-        name: 'OxBase',
-        title: 'OxBase',
-        description: 'OxBase',
-        lat: 46.2046,
-        lng: 6.1565,
-        address: '',
-        city: '',
-        postalCode: '',
-        country: ''
-    },{
-        id: 3,
-        pId: 0,
-        type: 'OxBase',
-        name: 'OxBase',
+        name: 'OxBase BAT B',
         title: 'OxBase',
         description: 'OxBase',
         lat: 46.2046,
@@ -654,14 +693,14 @@
         postalCode: '',
         country: ''
     },{
-        id: 4,
+        id: 2,
         pId: 0,
-        type: 'OxBase sans coords',
-        name: 'OxBase',
-        title: 'OxBase',
-        description: 'OxBase',
-        lat: null,
-        lng: null,
+        type: 'Sensor',
+        name: 'Sensor temperature',
+        title: 'Sensor temperature',
+        description: 'qsdnopqsiôdpkqoodiq',
+        lat: 46.2046,
+        lng: 6.1565,
         address: '',
         city: '',
         postalCode: '',
@@ -672,6 +711,23 @@
 
     const LeafletMapInstance = new LeafletMap(defaultMarkers);
     const TreeViewInstance = new TreeView(LeafletMapInstance, defaultSite);
+
+    /* Propriété d'un marker
+    {
+        id: Number,
+        pId: Number, // Si un OxBase à un pId alors son parent est son forwarder
+        type: String ENUM["OxBase", "Sensor"],
+        sensorType: String ENUM["Temperature", "Humidity", ...],
+        name: String,
+        description: String,
+        lat: String,
+        lng: String,
+        address: String,
+        city: String,
+        postalCode: String,
+        country: String
+    }
+     */
 
 </script>
 </body>

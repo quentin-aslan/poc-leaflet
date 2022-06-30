@@ -459,12 +459,19 @@
                 }]
             };
 
+
             const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
             this.MAP = L.map('leafletMap', mapOptions).setView(this.DEFAULT_COORDINATES, this.DEFAULT_ZOOM);
             L.tileLayer(this.TILE_URL, {
                 attribution
             }).addTo(this.MAP);
+        }
+
+        /** open modal **/
+        _displayAndPopulateModal(){
+            const modal = $('#modalAddMarker');
+            modal.modal('show');
         }
 
         /**
@@ -668,6 +675,18 @@
         city: '',
         postalCode: '',
         country: ''
+    },{
+        id: 1,
+        type: 'OxBase',
+        name: 'OxBase',
+        title: 'OxBase',
+        description: 'OxBase',
+        lat: 46.2046,
+        lng: 6.1565,
+        address: '',
+        city: '',
+        postalCode: '',
+        country: ''
     }]
 
     const defaultMarkers = [{
@@ -698,6 +717,19 @@
         id: 2,
         pId: 0,
         type: 'Sensor',
+        name: 'Sensor temperature',
+        title: 'Sensor temperature',
+        description: 'qsdnopqsiôdpkqoodiq',
+        lat: 46.2046,
+        lng: 6.1565,
+        address: '',
+        city: '',
+        postalCode: '',
+        country: ''
+    },{
+        id: 3,
+        pId: 1,
+        type: 'OxBase',
         name: 'Sensor temperature',
         title: 'Sensor temperature',
         description: 'qsdnopqsiôdpkqoodiq',

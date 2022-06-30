@@ -245,7 +245,12 @@
          */
         constructor(markers = []) {
             this.MAP = null;
-            this.MARKER_CLUSTER_GROUP = L.markerClusterGroup();
+            
+            this.clusterGroup = L.markerClusterGroup();
+            this.layerOxBase = L.layerGroup();
+            this.layerSensor = L.layerGroup();
+
+
             this.MARKERS = markers;
 
             this.DEFAULT_COORDINATES = [46.2046, 6.1565];
@@ -260,6 +265,7 @@
             this._initLeafletMap();
 
             this.displayMarkerCluster();
+            this.defineLayersAndControls();
         }
 
         // ✅ PUBLIC FUNCTIONS ✅
@@ -291,8 +297,11 @@
                 this.MARKERS = markers;
             }
 
-            this.MARKER_CLUSTER_GROUP.clearLayers(); // Delete all layers
+            // Delete all layers
+            this.layerOxBase.clearLayers();
+            this.layerSensor.clearLayers();
 
+            // Add markers to cluster group
             for(const marker of this.MARKERS) {
                 // If marker has no coordinates, we don't add it to the map
                 if(!marker.lat || !marker.lng) {
@@ -305,6 +314,10 @@
                 switch(marker.type) {
                     case "OxBase":
                         marker.icon = this._getOxBaseIcon();
+                        break;
+
+                    case "Sensor":
+                        marker.icon = this._getSensorIcon();
                         break;
 
                     default:
@@ -329,13 +342,89 @@
                     this.centerOnMarker(marker);
                 });
 
-                this.MARKER_CLUSTER_GROUP.addLayer(LMarker);
+                switch(marker.type) {
+                    case "OxBase":
+                        this.layerOxBase.addLayer(LMarker);
+                        break;
 
-                this.MAP.addLayer(this.MARKER_CLUSTER_GROUP);
+                    case "Sensor":
+                        this.layerSensor.addLayer(LMarker);
+                        break;
+
+                    default:
+                        console.log(`Unknown marker type: ${marker.type}`);
+                }
+
+                this.clusterGroup.addLayer(this.layerSensor);
+                this.clusterGroup.addLayer(this.layerOxBase);
+
+                this.MAP.addLayer(this.clusterGroup);
             }
+
+        }
+
+        /**
+         * Create leaflet layers and controls for sorting markers
+         */
+        defineLayersAndControls() {
+            const controls = {
+                OxBase: this.layerOxBase,
+                Sensors: this.layerSensor,
+            };
+
+            // Add controls and layers on map
+            L.control.layers(null, controls).addTo(this.MAP);
         }
 
         // 🔒 PRIVATE FUNCTIONS 🔒
+
+        /**
+         * Initialise la carte Leaflet
+         * @return {void}
+         * @private
+         */
+        _initLeafletMap() {
+            const LeafletMap = this;
+            const mapOptions = {
+                contextmenu: true,
+                contextmenuWidth: 150,
+                contextmenuItems: [{
+                    text: 'Add marker with modal',
+                    callback(e) {
+                        LeafletMap._displayAndPopulateModal(e.latlng.lat, e.latlng.lng);
+                    }
+                }, {
+                    text: 'Center map here',
+                    callback(e) {
+                        LeafletMap.MAP.panTo(e.latlng);
+                    }
+                },{
+                    text: 'Zoom in',
+                    callback(e) {
+                        console.log(this);
+                        LeafletMap.MAP.zoomIn();
+                    }
+                },{
+                    text: 'Zoom out',
+                    callback(e) {
+                        LeafletMap.MAP.zoomOut();
+                    }
+                },{
+                    text: 'Show coordinates',
+                    callback(e) {
+                        console.log(e);
+                        alert(e.latlng.toString());
+                    }
+                }]
+            };
+
+            const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+            this.MAP = L.map('leafletMap', mapOptions).setView(this.DEFAULT_COORDINATES, this.DEFAULT_ZOOM);
+            L.tileLayer(this.TILE_URL, {
+                attribution
+            }).addTo(this.MAP);
+        }
 
         /**
          * Make request API for get address from coordinates
@@ -359,7 +448,7 @@
          */
         _getMarkerInstance(id) {
             let markerInstance;
-            this.MARKER_CLUSTER_GROUP.eachLayer((marker) => {
+            this.layerOxBase.eachLayer((marker) => {
                 if(marker.options.id === id) {
                     markerInstance = marker;
                     // On ne peut pas return ou break ..
@@ -376,6 +465,20 @@
         _getOxBaseIcon() {
             return L.icon({
                 iconUrl: 'assets/images/ox_base_lora_400x400.png',
+                iconSize: [32, 37],
+                iconAnchor: [16, 37],
+                popupAnchor: [0, -37]
+            })
+        }
+
+        /**
+         * Get leaflet icon instance of an sensor
+         * @returns {L.icon}
+         * @private
+         */
+        _getSensorIcon() {
+            return L.icon({
+                iconUrl: 'assets/images/sensor_400x400.png',
                 iconSize: [32, 37],
                 iconAnchor: [16, 37],
                 popupAnchor: [0, -37]
@@ -490,7 +593,7 @@
     const defaultMarkers = [{
         id: 0,
         type: 'OxBase',
-        name: 'OxBase',
+        name: 'OxBase BAT A',
         title: 'OxBase',
         description: 'OxBase',
         lat: 46.2046,
@@ -499,35 +602,10 @@
         city: '',
         postalCode: '',
         country: ''
-    }, {
+    },{
         id: 1,
         type: 'OxBase',
-        name: 'OxBase',
-        title: 'OxBase',
-        description: 'OxBase',
-        lat: 46.2046,
-        lng: 6.1565,
-        address: '',
-        city: '',
-        postalCode: '',
-        country: ''
-    },{
-        id: 2,
-        type: 'OxBase',
-        name: 'OxBase',
-        title: 'OxBase',
-        description: 'OxBase',
-        lat: 46.2046,
-        lng: 6.1565,
-        address: '',
-        city: '',
-        postalCode: '',
-        country: ''
-    },{
-        id: 3,
-        pId: 0,
-        type: 'OxBase',
-        name: 'OxBase',
+        name: 'OxBase BAT B',
         title: 'OxBase',
         description: 'OxBase',
         lat: 46.2046,
@@ -537,40 +615,14 @@
         postalCode: '',
         country: ''
     },{
-        id: 4,
+        id: 2,
         pId: 0,
-        type: 'OxBase',
-        name: 'OxBase sans coords',
-        title: 'OxBase',
-        description: 'OxBase',
-        lat: null,
-        lng: null,
-        address: '',
-        city: '',
-        postalCode: '',
-        country: ''
-    },{
-        id: 109,
-        pId: 4,
         type: 'Sensor',
-        name: 'Capteur sans coordonnée',
-        title: 'DHT22',
-        description: 'Récupère la température et l\'humidité',
-        lat: null,
-        lng: null,
-        address: '',
-        city: '',
-        postalCode: '',
-        country: ''
-    },{
-        id: 20,
-        pId: -1,
-        type: 'Sensor',
-        name: 'Capteur de temperature',
-        title: 'OxBase',
-        description: 'OxBase',
-        lat: null,
-        lng: null,
+        name: 'Sensor temperature',
+        title: 'Sensor temperature',
+        description: 'qsdnopqsiôdpkqoodiq',
+        lat: 46.2046,
+        lng: 6.1565,
         address: '',
         city: '',
         postalCode: '',

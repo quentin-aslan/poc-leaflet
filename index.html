@@ -6,8 +6,10 @@
 
     <title>POC - Leaflet</title>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ==" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js" integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ==" crossorigin=""></script>
+    <!-- API leaflet stocké en local V1.8.0 -->
+    <link rel="stylesheet" href="assets/leaflet/leaflet.css"/>
+    <script src="assets/leaflet/leaflet.js"></script>
+
 
     <!-- Leaflet Marker Cluster -->
     <link rel="stylesheet" href="assets/MarkerCluster.css" />
@@ -51,7 +53,7 @@
 
 
                 <div class="panel-body">
-                    <ul id="tree" class="ztree" style="width:250px; overflzow:auto"></ul>
+                    <ul id="tree" class="ztree" style="overflzow:auto; height: 300px"></ul>
                 </div>
 
                 <div class="panel-footer text-right">
@@ -180,7 +182,8 @@
             for(let marker of markers) {
 
                 if(marker.type === "OxBase") {
-                    marker.icon = "assets/images/ox_base_lora_16x16.png";
+                    marker.icon = "assets/images/ox_base_lora_16x16.png",
+                    marker.fontCss = {backgroundColor: "#00ff00"};
                 }else if(marker.type === "Sensor") {
                     marker.icon = "assets/images/sensor16x16.png";
                 }

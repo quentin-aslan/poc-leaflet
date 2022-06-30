@@ -491,6 +491,14 @@
                     // On ne peut pas return ou break ..
                 }
             });
+
+            this.layerSensor.eachLayer((marker) => {
+                if(marker.options.id === id) {
+                    markerInstance = marker;
+                    // On ne peut pas return ou break ..
+                }
+            });
+
             return (markerInstance) ? markerInstance : null;
         }
 
